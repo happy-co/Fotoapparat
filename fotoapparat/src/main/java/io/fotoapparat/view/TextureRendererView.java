@@ -1,6 +1,7 @@
 package io.fotoapparat.view;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.AttrRes;
@@ -9,7 +10,10 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.StyleRes;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.TextureView;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import java.util.concurrent.CountDownLatch;
@@ -31,6 +35,7 @@ class TextureRendererView extends FrameLayout implements CameraRenderer {
 
     private Size previewSize = null;
     private ScaleType scaleType;
+    private WindowManager wmgr;
 
     public TextureRendererView(@NonNull Context context) {
         super(context);
@@ -63,6 +68,9 @@ class TextureRendererView extends FrameLayout implements CameraRenderer {
     }
 
     private void init() {
+        wmgr = (WindowManager)getContext()
+                .getApplicationContext()
+                .getSystemService(Context.WINDOW_SERVICE);
         textureView = new TextureView(getContext());
         tryToInitializeSurfaceTexture(textureView);
 
@@ -187,6 +195,18 @@ class TextureRendererView extends FrameLayout implements CameraRenderer {
         );
     }
 
+    @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        if (previewSize == null) {
+            return;
+        }
+        if (isPortrait() && previewSize.height < previewSize.width) {
+            previewSize = previewSize.flip();
+        } else if (!isPortrait() && previewSize.width < previewSize.height) {
+            previewSize = previewSize.flip();
+        }
+    }
+
     private class TextureListener implements TextureView.SurfaceTextureListener {
 
         @Override
@@ -212,4 +232,15 @@ class TextureRendererView extends FrameLayout implements CameraRenderer {
         }
     }
 
+    private boolean isPortrait() {
+        Display display= wmgr.getDefaultDisplay();
+        DisplayMetrics metrics=new DisplayMetrics();
+        display.getMetrics(metrics);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            display.getRealMetrics(metrics);
+        } else {
+            display.getMetrics(metrics);
+        }
+        return metrics.widthPixels<metrics.heightPixels;
+    }
 }
